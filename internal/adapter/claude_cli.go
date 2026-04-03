@@ -1,9 +1,9 @@
 package adapter
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"time"
 
@@ -16,20 +16,21 @@ type ClaudeBackend struct {
 }
 
 // NewClaudeBackend creates a new Claude backend
-func NewClaudeBackend(cliPath string) *ClaudeBackend {
-	return &ClaudeBackend{CLIPath: cliPath}
+func NewClaudeBackend() (*ClaudeBackend, error) {
+	path, err := exec.LookPath("claude")
+	if err != nil {
+		return nil, fmt.Errorf("未找到 claude CLI: %w", err)
+	}
+	return &ClaudeBackend{CLIPath: path}, nil
 }
 
-// Execute runs the Claude CLI with the given task spec
+// Execute 启动交互式 Claude 会话
 func (c *ClaudeBackend) Execute(ctx context.Context, spec schema.TaskSpec) (schema.ExecutionResult, error) {
 	start := time.Now()
-
-	// Build the command - Claude CLI interface
-	cmd := exec.CommandContext(ctx, c.CLIPath, "--prompt", spec.Goal)
-
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	cmd := exec.CommandContext(ctx, c.CLIPath, buildInteractivePrompt(spec))
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	err := cmd.Run()
 	finished := time.Now()
@@ -39,8 +40,7 @@ func (c *ClaudeBackend) Execute(ctx context.Context, spec schema.TaskSpec) (sche
 		Status:     "success",
 		StartedAt:  start,
 		FinishedAt: finished,
-		Stdout:     stdout.String(),
-		Stderr:     stderr.String(),
+		Summary:    "interactive claude session completed",
 	}
 
 	if err != nil {
@@ -49,17 +49,7 @@ func (c *ClaudeBackend) Execute(ctx context.Context, spec schema.TaskSpec) (sche
 		return result, fmt.Errorf("claude execution failed: %w", err)
 	}
 
-	result.Summary = parseClaudeSummary(stdout.String())
 	return result, nil
-}
-
-// parseClaudeSummary extracts a summary from Claude output
-func parseClaudeSummary(output string) string {
-	// TODO: Implement proper parsing based on actual Claude output format
-	if len(output) > 200 {
-		return output[:200] + "..."
-	}
-	return output
 }
 
 // Ensure ClaudeBackend implements ExecutorBackend

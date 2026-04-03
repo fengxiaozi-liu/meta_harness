@@ -1,9 +1,9 @@
 package adapter
 
 import (
-	"bytes"
 	"context"
 	"fmt"
+	"os"
 	"os/exec"
 	"time"
 
@@ -16,20 +16,21 @@ type CodexBackend struct {
 }
 
 // NewCodexBackend creates a new Codex backend
-func NewCodexBackend(cliPath string) *CodexBackend {
-	return &CodexBackend{CLIPath: cliPath}
+func NewCodexBackend() (*CodexBackend, error) {
+	path, err := exec.LookPath("codex")
+	if err != nil {
+		return nil, fmt.Errorf("未找到 codex CLI: %w", err)
+	}
+	return &CodexBackend{CLIPath: path}, nil
 }
 
-// Execute runs the Codex CLI with the given task spec
+// Execute 启动交互式 Codex 会话
 func (c *CodexBackend) Execute(ctx context.Context, spec schema.TaskSpec) (schema.ExecutionResult, error) {
 	start := time.Now()
-
-	// Build the command - Codex CLI interface
-	cmd := exec.CommandContext(ctx, c.CLIPath, "--prompt", spec.Goal)
-
-	var stdout, stderr bytes.Buffer
-	cmd.Stdout = &stdout
-	cmd.Stderr = &stderr
+	cmd := exec.CommandContext(ctx, c.CLIPath, buildInteractivePrompt(spec))
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 
 	err := cmd.Run()
 	finished := time.Now()
@@ -39,8 +40,7 @@ func (c *CodexBackend) Execute(ctx context.Context, spec schema.TaskSpec) (schem
 		Status:     "success",
 		StartedAt:  start,
 		FinishedAt: finished,
-		Stdout:     stdout.String(),
-		Stderr:     stderr.String(),
+		Summary:    "interactive codex session completed",
 	}
 
 	if err != nil {
@@ -49,17 +49,7 @@ func (c *CodexBackend) Execute(ctx context.Context, spec schema.TaskSpec) (schem
 		return result, fmt.Errorf("codex execution failed: %w", err)
 	}
 
-	result.Summary = parseCodexSummary(stdout.String())
 	return result, nil
-}
-
-// parseCodexSummary extracts a summary from Codex output
-func parseCodexSummary(output string) string {
-	// TODO: Implement proper parsing based on actual Codex output format
-	if len(output) > 200 {
-		return output[:200] + "..."
-	}
-	return output
 }
 
 // Ensure CodexBackend implements ExecutorBackend

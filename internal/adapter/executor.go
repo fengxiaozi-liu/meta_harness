@@ -20,12 +20,12 @@ const (
 )
 
 // NewBackend creates a new executor backend by type
-func NewBackend(backendType BackendType, cliPath string) (ExecutorBackend, error) {
+func NewBackend(backendType BackendType) (ExecutorBackend, error) {
 	switch backendType {
 	case BackendCodex:
-		return NewCodexBackend(cliPath), nil
+		return NewCodexBackend()
 	case BackendClaude:
-		return NewClaudeBackend(cliPath), nil
+		return NewClaudeBackend()
 	default:
 		return nil, &UnknownBackendError{Type: backendType}
 	}
