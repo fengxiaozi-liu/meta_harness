@@ -4,7 +4,7 @@ Code review and testing harness for AI-assisted development.
 
 ## Overview
 
-Meta Harness is a Go-based testing framework that integrates with code review tools to validate AI-generated code changes.
+Meta Harness is a Go-based harness framework that integrates with code review tools to validate AI-generated code changes.
 
 ## Structure
 
