@@ -1,0 +1,3 @@
+[submodule "harness_bridge"]
+	path = harness_bridge
+	url = https://github.com/fengxiaozi-liu/harness_bridge.git
